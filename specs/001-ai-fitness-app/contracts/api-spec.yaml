@@ -1,0 +1,830 @@
+openapi: 3.0.3
+info:
+  title: FitnessApp Backend API
+  description: REST API for AI-Driven Fitness iOS App with MongoDB backend
+  version: 1.0.0
+  contact:
+    name: FitnessApp Team
+
+servers:
+  - url: https://api.fitnessapp.com/v1
+    description: Production server
+  - url: https://staging-api.fitnessapp.com/v1
+    description: Staging server
+  - url: http://localhost:3000/v1
+    description: Local development server
+
+security:
+  - FirebaseAuth: []
+
+paths:
+  /users:
+    post:
+      summary: Create new user profile
+      description: Creates a new user document in MongoDB after Firebase authentication
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/{authId}:
+    get:
+      summary: Get user by Firebase UID
+      description: Retrieves user profile by Firebase authentication ID
+      tags:
+        - Users
+      parameters:
+        - $ref: '#/components/parameters/AuthId'
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Update user profile
+      description: Updates user profile and fitness information
+      tags:
+        - Users
+      parameters:
+        - $ref: '#/components/parameters/AuthId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete user account
+      description: Permanently deletes user and all associated data (GDPR compliance)
+      tags:
+        - Users
+      parameters:
+        - $ref: '#/components/parameters/AuthId'
+      responses:
+        '204':
+          description: User deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /users/{authId}/notification-preferences:
+    put:
+      summary: Update notification preferences
+      description: Updates user's notification settings and device token
+      tags:
+        - Users
+      parameters:
+        - $ref: '#/components/parameters/AuthId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationPreferences'
+      responses:
+        '200':
+          description: Preferences updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferences'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /fitness-metrics:
+    post:
+      summary: Create fitness metrics entry
+      description: Saves daily aggregated fitness metrics
+      tags:
+        - Fitness Metrics
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFitnessMetricsRequest'
+      responses:
+        '201':
+          description: Metrics created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FitnessMetrics'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /fitness-metrics/{userId}:
+    get:
+      summary: Get fitness metrics for user
+      description: Retrieves fitness metrics for specified date range
+      tags:
+        - Fitness Metrics
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Firebase UID of the user
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Start date (inclusive), defaults to 7 days ago
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: End date (inclusive), defaults to today
+        - name: days
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 365
+            default: 7
+          description: Number of days to retrieve (alternative to startDate/endDate)
+      responses:
+        '200':
+          description: Metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FitnessMetrics'
+                  count:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /workouts:
+    post:
+      summary: Create workout entry
+      description: Saves a workout session
+      tags:
+        - Workouts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkoutRequest'
+      responses:
+        '201':
+          description: Workout created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workout'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /workouts/{userId}:
+    get:
+      summary: Get workouts for user
+      description: Retrieves workout history for user
+      tags:
+        - Workouts
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Firebase UID of the user
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Start date (inclusive)
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: End date (inclusive)
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [running, cycling, swimming, strength, yoga, walking, hiking, elliptical, rowing, other]
+          description: Filter by workout type
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of workouts to return
+      responses:
+        '200':
+          description: Workouts retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Workout'
+                  count:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /workouts/{workoutId}:
+    get:
+      summary: Get specific workout
+      description: Retrieves a single workout by ID
+      tags:
+        - Workouts
+      parameters:
+        - name: workoutId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique workout identifier (UUID)
+      responses:
+        '200':
+          description: Workout found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workout'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete workout
+      description: Deletes a workout entry
+      tags:
+        - Workouts
+      parameters:
+        - name: workoutId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique workout identifier (UUID)
+      responses:
+        '204':
+          description: Workout deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /ai-insights/{userId}:
+    get:
+      summary: Get AI-generated insights
+      description: Retrieves personalized AI fitness insights for user
+      tags:
+        - AI Insights
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Firebase UID of the user
+      responses:
+        '200':
+          description: Insights retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  insights:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AIInsight'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    FirebaseAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase ID token in Authorization header
+
+  parameters:
+    AuthId:
+      name: authId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Firebase UID of the authenticated user
+
+  schemas:
+    User:
+      type: object
+      required:
+        - _id
+        - firebaseUid
+        - email
+        - authProvider
+        - createdAt
+        - onboardingCompleted
+      properties:
+        _id:
+          type: string
+          description: MongoDB ObjectId
+        firebaseUid:
+          type: string
+          description: Firebase authentication UID
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        authProvider:
+          type: string
+          enum: [apple, google, email]
+        profilePictureUrl:
+          type: string
+          format: uri
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        lastLoginAt:
+          type: string
+          format: date-time
+        fitnessProfile:
+          $ref: '#/components/schemas/FitnessProfile'
+        notificationPreferences:
+          $ref: '#/components/schemas/NotificationPreferences'
+        healthKitEnabled:
+          type: boolean
+        onboardingCompleted:
+          type: boolean
+
+    FitnessProfile:
+      type: object
+      required:
+        - age
+        - weight
+        - height
+        - fitnessGoals
+        - activityLevel
+      properties:
+        age:
+          type: integer
+          minimum: 13
+          maximum: 120
+        weight:
+          type: number
+          format: float
+          minimum: 20
+          maximum: 300
+          description: Weight in kilograms
+        height:
+          type: number
+          format: float
+          minimum: 100
+          maximum: 250
+          description: Height in centimeters
+        weightGoal:
+          type: number
+          format: float
+          description: Target weight in kilograms
+        fitnessGoals:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum: [weight_loss, muscle_gain, endurance, general_fitness]
+        activityLevel:
+          type: string
+          enum: [sedentary, lightly_active, moderately_active, very_active, extra_active]
+
+    NotificationPreferences:
+      type: object
+      required:
+        - enabled
+        - dailyReminder
+        - achievements
+        - aiInsights
+        - reminderTime
+      properties:
+        enabled:
+          type: boolean
+        dailyReminder:
+          type: boolean
+        achievements:
+          type: boolean
+        aiInsights:
+          type: boolean
+        reminderTime:
+          type: string
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+          description: Time in HH:MM format (24-hour)
+        deviceToken:
+          type: string
+          description: FCM device token for push notifications
+
+    FitnessMetrics:
+      type: object
+      required:
+        - _id
+        - userId
+        - date
+        - steps
+        - activeEnergy
+        - activeMinutes
+        - dataSource
+      properties:
+        _id:
+          type: string
+        userId:
+          type: string
+        date:
+          type: string
+          format: date
+          description: Date at start of day (00:00:00 UTC)
+        steps:
+          type: integer
+          minimum: 0
+          maximum: 100000
+        activeEnergy:
+          type: integer
+          minimum: 0
+          maximum: 10000
+          description: Active calories burned in kcal
+        activeMinutes:
+          type: integer
+          minimum: 0
+          maximum: 1440
+          description: Minutes of active movement
+        restingHeartRate:
+          type: integer
+          minimum: 30
+          maximum: 200
+          description: Resting heart rate in bpm
+        averageHeartRate:
+          type: integer
+          minimum: 30
+          maximum: 200
+        maxHeartRate:
+          type: integer
+          minimum: 30
+          maximum: 200
+        distance:
+          type: number
+          format: float
+          description: Distance traveled in meters
+        floorsClimbed:
+          type: integer
+          minimum: 0
+        dataSource:
+          type: string
+          enum: [healthkit, manual, apple_watch]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Workout:
+      type: object
+      required:
+        - _id
+        - userId
+        - workoutId
+        - type
+        - startDate
+        - endDate
+        - duration
+        - calories
+        - dataSource
+      properties:
+        _id:
+          type: string
+        userId:
+          type: string
+        workoutId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [running, cycling, swimming, strength, yoga, walking, hiking, elliptical, rowing, other]
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        duration:
+          type: number
+          format: float
+          minimum: 60
+          maximum: 86400
+          description: Duration in seconds
+        distance:
+          type: number
+          format: float
+          description: Distance in meters
+        calories:
+          type: integer
+          minimum: 0
+          maximum: 5000
+        averageHeartRate:
+          type: integer
+          minimum: 30
+          maximum: 200
+        maxHeartRate:
+          type: integer
+          minimum: 30
+          maximum: 200
+        notes:
+          type: string
+          maxLength: 500
+        dataSource:
+          type: string
+          enum: [healthkit, manual]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AIInsight:
+      type: object
+      required:
+        - id
+        - userId
+        - message
+        - insightType
+        - generatedAt
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        message:
+          type: string
+          maxLength: 200
+          description: Personalized insight message
+        insightType:
+          type: string
+          enum: [motivational, achievement, recommendation, trend]
+        generatedAt:
+          type: string
+          format: date-time
+        displayUntil:
+          type: string
+          format: date-time
+
+    CreateUserRequest:
+      type: object
+      required:
+        - firebaseUid
+        - email
+        - authProvider
+      properties:
+        firebaseUid:
+          type: string
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        authProvider:
+          type: string
+          enum: [apple, google, email]
+        profilePictureUrl:
+          type: string
+          format: uri
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+        profilePictureUrl:
+          type: string
+          format: uri
+        fitnessProfile:
+          $ref: '#/components/schemas/FitnessProfile'
+        healthKitEnabled:
+          type: boolean
+        onboardingCompleted:
+          type: boolean
+
+    CreateFitnessMetricsRequest:
+      type: object
+      required:
+        - userId
+        - date
+        - steps
+        - activeEnergy
+        - activeMinutes
+        - dataSource
+      properties:
+        userId:
+          type: string
+        date:
+          type: string
+          format: date
+        steps:
+          type: integer
+        activeEnergy:
+          type: integer
+        activeMinutes:
+          type: integer
+        restingHeartRate:
+          type: integer
+        averageHeartRate:
+          type: integer
+        maxHeartRate:
+          type: integer
+        distance:
+          type: number
+        floorsClimbed:
+          type: integer
+        dataSource:
+          type: string
+          enum: [healthkit, manual, apple_watch]
+
+    CreateWorkoutRequest:
+      type: object
+      required:
+        - userId
+        - workoutId
+        - type
+        - startDate
+        - endDate
+        - duration
+        - calories
+        - dataSource
+      properties:
+        userId:
+          type: string
+        workoutId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [running, cycling, swimming, strength, yoga, walking, hiking, elliptical, rowing, other]
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        duration:
+          type: number
+        distance:
+          type: number
+        calories:
+          type: integer
+        averageHeartRate:
+          type: integer
+        maxHeartRate:
+          type: integer
+        notes:
+          type: string
+        dataSource:
+          type: string
+          enum: [healthkit, manual]
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error details
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: BAD_REQUEST
+            message: Validation failed
+            details:
+              field: weight
+              issue: Must be between 20 and 300 kg
+
+    Unauthorized:
+      description: Authentication required or invalid token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: UNAUTHORIZED
+            message: Invalid or expired Firebase ID token
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: NOT_FOUND
+            message: User not found
+
+tags:
+  - name: Users
+    description: User account and profile management
+  - name: Fitness Metrics
+    description: Daily aggregated fitness metrics
+  - name: Workouts
+    description: Individual workout session management
+  - name: AI Insights
+    description: AI-generated personalized fitness insights
+
