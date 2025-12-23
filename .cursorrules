@@ -1,0 +1,17 @@
+# Project Rules
+
+## CRITICAL: Documentation Files
+- NEVER create .md files
+- NEVER write markdown documentation
+- If documentation is needed, provide it ONLY in chat responses
+- Exception: Can read existing .md files if needed
+
+## Secrets
+- NEVER include example credentials, passwords, or API keys in any files
+- NEVER commit sensitive configuration
+- Always use placeholder text like "YOUR_PASSWORD_HERE" if examples are absolutely needed in chat
+
+## Git
+- Always check what files are staged before committing
+- Follow user instructions exactly regarding what to commit
+
