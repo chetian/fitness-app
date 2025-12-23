@@ -1,9 +1,10 @@
 # Project Rules
 
 ## CRITICAL: Documentation Files
-- NEVER create .md files
-- NEVER write markdown documentation
+- NEVER create .md files in the project root or documentation folders
+- NEVER write markdown documentation like README.md, GUIDE.md, etc.
 - If documentation is needed, provide it ONLY in chat responses
+- Exception: .specify/ and specs/ folders are allowed to have .md files (Specify system files)
 - Exception: Can read existing .md files if needed
 
 ## Secrets
