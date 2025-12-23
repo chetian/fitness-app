@@ -102,6 +102,8 @@ pubsub-debug.log
 # Secrets (double-check these are ignored!)
 GoogleService-Info.plist
 GoogleService-Info.plist.backup
+Firebase.env
+FirebaseConfig.plist
 *.pem
 *.key
 *.cert

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>FIREBASE_API_KEY</key>
+	<string>your-api-key-here</string>
+	<key>FIREBASE_PROJECT_ID</key>
+	<string>your-project-id</string>
+	<key>FIREBASE_REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.YOUR-CLIENT-ID</string>
+	<key>FIREBASE_CLIENT_ID</key>
+	<string>YOUR-CLIENT-ID.apps.googleusercontent.com</string>
+	<key>FIREBASE_BUNDLE_ID</key>
+	<string>com.yourcompany.FitnessApp</string>
+	<key>FIREBASE_DATABASE_URL</key>
+	<string>https://your-project.firebaseio.com</string>
+	<key>FIREBASE_STORAGE_BUCKET</key>
+	<string>your-project.appspot.com</string>
+	<key>FIREBASE_GCM_SENDER_ID</key>
+	<string>your-sender-id</string>
+</dict>
+</plist>
+
