@@ -80,8 +80,10 @@ error.log
 *.swo
 *~
 
-# Cursor
-.cursor/
+# Cursor (but keep custom commands and rules)
+.cursor/*
+!.cursor/commands/
+!.cursor/rules/
 
 # Temporary files
 *.tmp
