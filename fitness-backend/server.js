@@ -6,24 +6,110 @@ const { MongoClient, ServerApiVersion } = require('mongodb');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Dev mode: use in-memory store when MONGODB_URI is not set (e.g. local dev without MongoDB)
+const DEV_MODE = !process.env.MONGODB_URI;
+if (DEV_MODE) {
+  console.log('⚠️  Running in DEV mode (no MONGODB_URI). Data is in-memory only and will be lost on restart.');
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// MongoDB Connection
-const uri = process.env.MONGODB_URI;
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  }
-});
-
 let db;
+let client = null;
 
-// Connect to MongoDB
+// ---------- In-memory store for dev mode ----------
+function createInMemoryStore() {
+  const stores = {
+    users: [],
+    fitness_metrics: [],
+    workouts: [],
+    devices: []
+  };
+  let idCounter = 0;
+  function nextId() {
+    idCounter += 1;
+    return `dev_${idCounter}_${Date.now()}`;
+  }
+  function match(doc, query) {
+    if (!doc || !query) return true;
+    for (const [key, value] of Object.entries(query)) {
+      if (value && typeof value === 'object' && !Array.isArray(value) && value.$gte !== undefined) {
+        if (doc[key] < value.$gte) return false;
+      } else if (doc[key] !== value) {
+        return false;
+      }
+    }
+    return true;
+  }
+  function createCollection(name) {
+    const list = stores[name] || (stores[name] = []);
+    return {
+      findOne: async (query) => list.find((d) => match(d, query)) || null,
+      find: (query) => ({
+        sort: (sortObj) => {
+          const run = async (limitCount) => {
+            let out = list.filter((d) => match(d, query));
+            const key = Object.keys(sortObj)[0];
+            const desc = sortObj[key] === -1;
+            out.sort((a, b) => (a[key] > b[key] ? (desc ? -1 : 1) : (desc ? 1 : -1)));
+            return limitCount != null ? out.slice(0, limitCount) : out;
+          };
+          return {
+            limit: (n) => ({ toArray: () => run(n) }),
+            toArray: () => run(null)
+          };
+        }
+      }),
+      insertOne: async (doc) => {
+        const _id = nextId();
+        const newDoc = { ...doc, _id };
+        list.push(newDoc);
+        return { insertedId: _id };
+      },
+      findOneAndUpdate: async (filter, updateDoc, options) => {
+        const idx = list.findIndex((d) => match(d, filter));
+        if (idx === -1) return null;
+        const set = updateDoc.$set || updateDoc;
+        list[idx] = { ...list[idx], ...set };
+        return options?.returnDocument === 'after' ? list[idx] : list[idx];
+      },
+      deleteOne: async (filter) => {
+        const idx = list.findIndex((d) => match(d, filter));
+        if (idx === -1) return { deletedCount: 0 };
+        list.splice(idx, 1);
+        return { deletedCount: 1 };
+      },
+      deleteMany: async (filter) => {
+        const before = list.length;
+        for (let i = list.length - 1; i >= 0; i--) {
+          if (match(list[i], filter)) list.splice(i, 1);
+        }
+        return { deletedCount: before - list.length };
+      }
+    };
+  }
+  return {
+    collection: (name) => createCollection(name)
+  };
+}
+
+// Connect to MongoDB (or use in-memory store in dev)
 async function connectDB() {
+  if (DEV_MODE) {
+    db = createInMemoryStore();
+    console.log('✅ Using in-memory store (dev mode)');
+    return;
+  }
+  const uri = process.env.MONGODB_URI;
+  client = new MongoClient(uri, {
+    serverApi: {
+      version: ServerApiVersion.v1,
+      strict: true,
+      deprecationErrors: true,
+    }
+  });
   try {
     await client.connect();
     db = client.db('fitness_app');
@@ -472,8 +558,10 @@ connectDB().then(() => {
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('\n🔌 Closing MongoDB connection...');
-  await client.close();
+  if (client) {
+    console.log('\n🔌 Closing MongoDB connection...');
+    await client.close();
+  }
   process.exit(0);
 });
 

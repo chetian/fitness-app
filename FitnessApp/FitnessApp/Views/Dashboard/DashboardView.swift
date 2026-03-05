@@ -125,17 +125,6 @@ struct DashboardView: View {
             }
             .navigationTitle("Dashboard")
             .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink {
-                        ProfilePlaceholderView(authViewModel: authViewModel)
-                    } label: {
-                        Image(systemName: "person.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.accentColor)
-                    }
-                }
-            }
         }
         .task {
             if let user = authViewModel.currentUser {

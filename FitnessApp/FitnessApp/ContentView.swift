@@ -20,8 +20,8 @@ struct ContentView: View {
                 } else if let user = authViewModel.currentUser {
                     // User exists in database
                     if user.onboardingCompleted {
-                        // Dashboard
-                        DashboardPlaceholderView(authViewModel: authViewModel)
+                        // Main tab bar (Today, Plan, Workout, Activities, Profile)
+                        MainTabView(authViewModel: authViewModel)
                     } else {
                         // Existing user who hasn't completed onboarding - can resume progress
                         OnboardingPlaceholderView(viewModel: authViewModel, isNewUser: false)
